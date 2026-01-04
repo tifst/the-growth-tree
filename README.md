@@ -1,6 +1,5 @@
 🌱 The Growth Tree
-The Growth Tree is a Unity 3D environmental simulation game where players restore nature by planting and maintaining trees while managing pollution, resources, and quests.
-This project was developed as an academic game project focusing on modular system design, persistent game state, and interactive gameplay mechanics.
+The Growth Tree is a Unity 3D environmental simulation game where players restore nature by planting and maintaining trees while managing pollution, resources, and quests. This project was developed as an academic game project focusing on modular system design, persistent game state, and interactive gameplay mechanics.
 
 🎮 Gameplay Overview
 Players can:
@@ -61,9 +60,9 @@ Players can:
 - Seamless transition between Main Menu and Gameplay scenes
 
 🛠️ Technical Details
-Engine: Unity 3D (URP)
-Programming Language: C#
-Architecture: Modular, event-driven
-Data Storage: JSON serialization
-Input System: Unified interaction interface
-Rendering: Universal Render Pipeline (URP)
+- Engine: Unity 3D (URP)
+- Programming Language: C#
+- Architecture: Modular, event-driven
+- Data Storage: JSON serialization
+- Input System: Unified interaction interface
+- Rendering: Universal Render Pipeline (URP)
