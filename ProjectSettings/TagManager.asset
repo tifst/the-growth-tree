@@ -8,6 +8,7 @@ TagManager:
   - Water
   - Interactor
   - Interactable
+  - NPC
   layers:
   - Default
   - TransparentFX

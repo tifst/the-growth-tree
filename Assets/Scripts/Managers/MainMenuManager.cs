@@ -16,12 +16,33 @@ public class MainMenuManager : MonoBehaviour
     public GameObject creditsPanel;     // Panel Credit
     public GameObject infoPanel;        // Panel Info / Controls (BARU)
 
+    [Header("Reset Confirmation")]
+    public GameObject resetConfirmPanel;
+
     // --- FUNGSI UTAMA ---
+    void Update()
+    {
+        if (resetConfirmPanel.activeSelf || creditsPanel.activeSelf || infoPanel.activeSelf)
+        {
+            if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                // Tutup panel yang aktif
+                if (resetConfirmPanel.activeSelf)
+                    CloseReset();
+                else if (creditsPanel.activeSelf)
+                    HideCredits();
+                else if (infoPanel.activeSelf)
+                    HideInfo();
+            }
+        }
+    }
+    
     public void PlayGame()
     {
         if (Application.CanStreamedLevelBeLoaded(gameSceneName))
         {
-            SceneManager.LoadScene(gameSceneName);
+            SceneLoader.Instance.LoadGameScene(gameSceneName);
+            GameSession.ForceNewGame = false;
         }
         else
         {
@@ -76,6 +97,30 @@ public class MainMenuManager : MonoBehaviour
         {
             infoPanel.SetActive(false);      // Tutup info
             mainMenuCanvas.SetActive(true);  // Buka menu utama
+        }
+    }
+
+    public void ResetGame()
+    {
+        SaveService.Instance?.Delete();
+        GameSession.ForceNewGame = true;
+
+        CloseReset();
+    }
+
+    public void ShowResetConfirm()
+    {
+        if (resetConfirmPanel != null)
+        {
+            resetConfirmPanel.SetActive(true);
+        }
+    }
+
+    public void CloseReset()
+    {
+        if (resetConfirmPanel != null)
+        {
+            resetConfirmPanel.SetActive(false);
         }
     }
 }

@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 11042682d2d5a2b469b041caca5db0eb, type: 3}
+  m_Name: M6PlantTree
+  m_EditorClassIdentifier: Assembly-CSharp::QuestData
+  questID: M6
+  questTitle: Plant Any Tree
+  shortDescription: Plant one any tree and grow it
+  description: 'Mayor: It seems we need to plant more trees to reduce the pollution
+    even further. Let''s keep going'
+  questIcon: {fileID: 21300000, guid: 0433de9800d389443a27fe371055e56c, type: 3}
+  npcPrefab: {fileID: 4055082905570935619, guid: 7132a51dba3555b4590981aa05d0ed00, type: 3}
+  type: 0
+  difficulty: 1
+  goalType: 1
+  targetName: Any
+  requiredAmount: 1
+  forceNewNPC: 1
+  rewardXP: 20
+  rewardCoins: 40
+  hasTimer: 1
+  duration: 210
+  isRepeatable: 0

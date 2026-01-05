@@ -31,7 +31,7 @@ public class GlobalUIManager : MonoBehaviour
     public void OpenPanel(GameObject panel)
     {
         if (panel == null) return;
-
+        
         if (panel == pauseMenuPanel)
         {
             panel.SetActive(true);

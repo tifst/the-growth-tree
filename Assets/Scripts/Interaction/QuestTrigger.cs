@@ -1,62 +1,45 @@
 using UnityEngine;
-using System.Collections;
 
 public class QuestTrigger : MonoBehaviour, IInteractable
 {
     [Header("Quest")]
     public QuestData questToGive;
-    public Transform npcHead;
+    public Transform npcPoint;
 
-    private bool isPlayerInside = false;
+    private bool isPlayerInside;
 
-    public string PromptMessage => "[R] Take Quest";
+    public string PromptMessage => "[R] Talk";
     public InputType InputKey => InputType.R;
 
-    // ========== TRIGGER MASUK ==========
     private void OnTriggerEnter(Collider other)
     {
         if (!other.CompareTag("Player")) return;
-
         isPlayerInside = true;
-
-        PromptUI.Instance.Show(PromptMessage, this);
     }
 
-    // ========== TRIGGER KELUAR ==========
     private void OnTriggerExit(Collider other)
     {
         if (!other.CompareTag("Player")) return;
 
         isPlayerInside = false;
-
-        PromptUI.Instance.Hide(this);
         PopupQuest.Instance.Hide();
-    }
-
-    private IEnumerator ShowQuestMessage(string msg, float duration = 2f)
-    {
-        PromptUI.Instance.Show(msg, this);
-        yield return new WaitForSeconds(duration);
-        PromptUI.Instance.Hide(this);
     }
 
     public void Interact()
     {
         if (!isPlayerInside) return;
 
-        PromptUI.Instance.Hide(this);
+        // ❗ JANGAN start quest / invoke tutorial DI SINI
+        GuideManager.Instance.RemoveTarget(transform);
 
-        // Popup quest muncul
-        PopupQuest.Instance.Show(questToGive, npcHead);
+        PromptManager.Instance.RefreshContext(
+            this,
+            QuestManager.Instance.HasQuest(questToGive)
+                ? "Quest already taken, complete it first!"
+                : "[Enter] Confirm quest"
+        );
 
-        if (!QuestManager.Instance.HasQuest(questToGive))
-        {
-            QuestManager.Instance.StartQuest(questToGive);
-            StartCoroutine(ShowQuestMessage("New quest taken: " + questToGive.questTitle));
-        }
-        else
-        {
-            StartCoroutine(ShowQuestMessage("Quest already taken, complete it first!"));
-        }
+        // tampilkan popup
+        PopupQuest.Instance.Show(questToGive, npcPoint, this);
     }
 }

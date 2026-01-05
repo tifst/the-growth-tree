@@ -10,20 +10,20 @@ public class UIManager : MonoBehaviour
     public TMP_Text levelText;
     public TMP_Text coinsText;
     public TMP_Text pollutionText;
-    public TMP_Text seedsText;
-    public TMP_Text fruitsText;
     public TMP_Text xpText;
     public TMP_Text waterText;
     public TMP_Text bagCapacityText;
+    public string BagCapacityString => bagCapacityText != null ? bagCapacityText.text : "";
 
     [Header("Bars")]
     public GradientBarController xpBar;
     public GradientBarController pollutionBar;
     public GradientBarController waterBar;
+    public GradientBarController bagBar;   // 🆕 BAG BAR
 
     [Header("Inventory UI")]
-    public Transform itemContainer;      // GridLayoutGroup parent
-    public GameObject itemSlotPrefab;    // Slot prefab untuk benih & buah
+    public Transform itemContainer;
+    public GameObject itemSlotPrefab;
 
     private List<ItemSlot> allSlots = new List<ItemSlot>();
 
@@ -34,17 +34,13 @@ public class UIManager : MonoBehaviour
 
     void Start()
     {
-        // Pasang pointer balik
         GameManager.Instance.uiManager = this;
 
-        // Generate semua slot inventori sekali saja
         GenerateAllSlots();
-
-        // Update semua UI
         UpdateAllUI();
     }
 
-    //  GENERATE SLOT INVENTORI (1x SAJA)
+    // ================= INVENTORY SLOT =================
     void GenerateAllSlots()
     {
         allSlots.Clear();
@@ -53,11 +49,8 @@ public class UIManager : MonoBehaviour
         {
             if (tree == null) continue;
 
-            // 1️⃣ Slot Benih
-            CreateSlot(tree.treeName, true);
-
-            // 2️⃣ Slot Buah
-            CreateSlot(tree.treeName, false);
+            CreateSlot(tree.treeName, true);   // Seed
+            CreateSlot(tree.treeName, false);  // Fruit
         }
     }
 
@@ -72,7 +65,7 @@ public class UIManager : MonoBehaviour
         allSlots.Add(slot);
     }
 
-    //  UPDATE UI
+    // ================= UPDATE ALL =================
     public void UpdateAllUI()
     {
         var gm = GameManager.Instance;
@@ -83,55 +76,58 @@ public class UIManager : MonoBehaviour
         UpdateWater(gm.currentWater, gm.maxWater);
         UpdateXP(gm.xp, gm.prevXp, gm.nextXp);
 
-        UpdateSeeds(gm.GetTotalSeeds());
-        UpdateFruits(gm.GetTotalFruits());
-
         UpdateInventoryUI();
     }
 
     public void UpdateInventoryUI()
     {
-        // Refresh semua slot
         foreach (var slot in allSlots)
             slot.UpdateSlotUI();
 
         UpdateBagCapacity();
     }
 
+    // ================= BAG =================
     public void UpdateBagCapacity()
     {
         int total = GameManager.Instance.GetTotalItems();
         int max = InventorySystem.Instance.maxBagCapacity;
 
         bagCapacityText.text = $"{total}/{max}";
+
+        float progress = Mathf.Clamp01((float)total / max);
+        bagBar?.UpdateBar(progress);
     }
 
-    //  INDIVIDUAL UPDATE FUNCTIONS
+    // ================= INDIVIDUAL =================
     public void UpdatePollution(float v, float max)
     {
-        pollutionText.text = $"POLLUTION: {v:F0}%";
-        pollutionBar?.UpdateBar(v / max, Color.red);
+        pollutionText.text = $"{v:F0}%";
+        pollutionBar?.UpdateBar(v / max);
     }
 
     public void UpdateWater(float c, float max)
     {
-        waterText.text = $"WATER: {c:F0}/{max:F0}";
-        waterBar?.UpdateBar(c / max, Color.cyan);
+        waterText.text = $"{c:F0}/{max:F0}";
+        waterBar?.UpdateBar(c / max);
     }
 
     public void UpdateXP(int total, int prev, int next)
     {
-        float prog = Mathf.Clamp01((float)(total - prev) / (next - prev));
+        int denom = Mathf.Max(1, next - prev);
+        float prog = Mathf.Clamp01((float)(total - prev) / denom);
+
         xpText.text = $"{total}/{next}";
-        xpBar?.UpdateBar(prog, Color.green);
+        xpBar?.UpdateBar(prog);
     }
 
     public void UpdateLevel(int lvl)
     {
-        levelText.text = $"LEVEL: {lvl}";
-        PromptUI.Instance.ShowPickupMessage($"LEVEL UP! You are now Level {lvl}!", 3f);
+        levelText.text = $"{lvl}";
     }
-    public void UpdateCoins(int c) => coinsText.text = $"COINS: ${c}";
-    public void UpdateSeeds(int c) => seedsText.text = $"SEEDS: {c}";
-    public void UpdateFruits(int c) => fruitsText.text = $"FRUITS: {c}";
+
+    public void UpdateCoins(int c)
+    {
+        coinsText.text = $"{c}";
+    }
 }

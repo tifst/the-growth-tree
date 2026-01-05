@@ -107,9 +107,6 @@ public class ItemSlot : MonoBehaviour
         else
             GameManager.Instance.ModifyFruitStock(itemID, -amount);
 
-        // Jika dropOne → tetap selected
-        // Jika dropAll → deselect karena slot hilang
-
         if (dropAll)
         {
             InventorySystem.Instance.DeselectItem();

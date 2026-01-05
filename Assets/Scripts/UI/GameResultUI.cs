@@ -7,15 +7,42 @@ public class GameResultUI : MonoBehaviour
     public string mainMenuScene = "MainMenu";
     public string gameplayScene = "MainScene"; // dipakai kalau retry
 
+    [SerializeField] private GameObject winPanel;
+    [SerializeField] private GameObject losePanel;
+
+    void Awake()
+    {
+        winPanel.SetActive(false);
+        losePanel.SetActive(false);
+    }
+
+    void OnEnable()
+    {
+        GameManager.OnGameOver += ShowResult;
+    }
+
+    void OnDisable()
+    {
+        GameManager.OnGameOver -= ShowResult;
+    }
+
+    void ShowResult(bool isWin)
+    {
+        if (isWin)
+            winPanel.SetActive(true);
+        else
+            losePanel.SetActive(true);
+    }
+
     // TOMBOL RETRY (ulangi dari awal)
     public void OnRetryButton()
     {
         Time.timeScale = 1f;
-        if (GameManager.Instance != null)
-            GameManager.Instance.ResetGameData();
+    
+        GameSession.ForceNewGame = true;
+        SceneLoader.Instance.LoadGameScene(gameplayScene);
 
         AudioManager.Instance.retryGameplay();
-        SceneManager.LoadScene(gameplayScene);
     }
 
     // TOMBOL MAIN MENU
@@ -23,7 +50,7 @@ public class GameResultUI : MonoBehaviour
     {
         Time.timeScale = 1f;
         AudioManager.Instance.PlayMusic(AudioManager.Instance.bgmMainMenu);
-        SceneManager.LoadScene(mainMenuScene);
+        SceneLoader.Instance.LoadMainMenu(mainMenuScene);
     }
 
     // TOMBOL CONTINUE (tidak reload scene, lanjut saja)
@@ -33,7 +60,7 @@ public class GameResultUI : MonoBehaviour
         AudioManager.Instance.continueGameplay();
 
         // 🔄 Hilangkan panel kemenangan
-        gameObject.SetActive(false);
+        winPanel.SetActive(false);
 
         // 🕹️ Balik ke gameplay normal
         Time.timeScale = 1f;

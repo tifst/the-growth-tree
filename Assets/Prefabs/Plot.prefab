@@ -66,6 +66,8 @@ MeshRenderer:
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
   m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -87,6 +89,7 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
@@ -150,8 +153,8 @@ MonoBehaviour:
   audioSource: {fileID: 0}
   digSound: {fileID: 8300000, guid: 86613556cd7eb4248823546cc5324a3c, type: 3}
   playerInRange: 0
-  plantPrompt: '[E] Tanam Benih'
-  chopPrompt: '[E] Tebang Pohon Mati'
+  plantPrompt: '[E] Plant a Tree'
+  chopPrompt: '[E] Chop Down Dead Tree'
 --- !u!114 &3744732953013346432
 MonoBehaviour:
   m_ObjectHideFlags: 0

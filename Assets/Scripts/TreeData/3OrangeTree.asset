@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 29d5c083d7412764eb474c9f8d796de2, type: 3}
+  m_Name: 3OrangeTree
+  m_EditorClassIdentifier: Assembly-CSharp::TreeData
+  treeName: Orange
+  seedBuyPrice: 100
+  fruitSellPrice: 10
+  requiredLevel: 5
+  xpRewardPlant: 20
+  xpRewardHarvest: 3
+  pollutionReduction: 15
+  treePrefab: {fileID: 918034245688163593, guid: 01dac551d43c70445969e20e4782792b, type: 3}
+  fruitPrefab: {fileID: 6896672087406351890, guid: 0985e0712e110e4458d5c0d618060318, type: 3}
+  fruitIcon: {fileID: 21300000, guid: 6fc31519aded24a839c1af9e163b6c01, type: 3}
+  seedIcon: {fileID: 21300000, guid: 65ca94810f35b4a47a50b5c3106df44c, type: 3}
+  healthyLeafMaterial: {fileID: 2100000, guid: dddaf13421502c2499c519fc536de2ca, type: 2}
+  dryLeafMaterial: {fileID: 2100000, guid: 17fe475db01092a458233ebff90794d4, type: 2}
+  deadTrunkPrefab: {fileID: 1215182899609276316, guid: c6a512d95615f534cbe31aba1aaa354c, type: 3}
+  maxScale: {x: 1, y: 1, z: 1}
+  timeNeededToGrow: 80
+  maxHealth: 1000
+  startHealth: 500
+  grownDecayRate: 4
+  healthyDecayRate: 15
+  criticalDecayRate: 3
+  waterNeedThreshold: 0.4
+  maxFruitCount: 6
+  fruitSpawnInterval: 15

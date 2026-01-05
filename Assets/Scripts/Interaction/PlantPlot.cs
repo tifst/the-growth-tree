@@ -1,12 +1,12 @@
 using UnityEngine;
 
-public class PlantPlot : MonoBehaviour
+public class PlantPlot : MonoBehaviour, IInteractable
 {
     [Header("Tree Prefab Data")]
     [SerializeField] private TreeData selectedTreeData;
 
     [Header("Offset Posisi Spawn")]
-    [SerializeField] private Vector3 spawnOffset = new Vector3(2.5f, 0f, -2.5f);
+    public Vector3 spawnOffset = new Vector3(2.5f, 0f, -2.5f);
 
     private PlotHighlight highlighter;
     private PlantingUI plantingUI;
@@ -16,11 +16,47 @@ public class PlantPlot : MonoBehaviour
     [SerializeField] private AudioClip digSound;
 
     private GameObject plantedTree;
-    private GrowTree growTree;
+    public GrowTree growTree;
+    public string plotID;
 
     public bool playerInRange = false;
-    public string plantPrompt = "[E] Plant a Tree";
-    public string chopPrompt = "[E] Chop Down Dead Tree";
+    bool hasTriggeredReachPlot = false;
+    public InputType InputKey => InputType.E; // default, bisa override di PlayerInteract
+    public string PromptMessage
+    {
+        get
+        {
+            if (growTree == null)
+                return "[E] Plant Tree";
+
+            // 🔥 plot hanya hidup jika owner = Plot
+            if (growTree.GetActionOwner() != TreeActionOwner.Plot)
+                return "";
+
+            if (growTree.IsTreeDead())
+                return "[E] Chop Down Dead Tree";
+
+            if (growTree.CanBeWatered())
+                return "[Q] Water Tree";
+
+            return "";
+        }
+    }
+
+    public void Interact()
+    {
+        if (growTree == null)
+        {
+            plantingUI?.OpenPlantingMenu(this);
+            return;
+        }
+
+        if (growTree.IsTreeDead())
+        {
+            ChopDownTree();
+            return;
+        }
+    }
 
     void Start()
     {
@@ -30,30 +66,15 @@ public class PlantPlot : MonoBehaviour
 
         plantingUI = FindFirstObjectByType<PlantingUI>();
 
+        if (growTree == null)
+        {
+            growTree = GetComponentInChildren<GrowTree>();
+            if (growTree != null)
+                growTree.parentPlot = this;
+        }
+
         if (audioSource == null)
             audioSource = GetComponent<AudioSource>();
-    }
-
-    void Update()
-    {
-        if (plantingUI == null)
-            plantingUI = FindFirstObjectByType<PlantingUI>();
-
-        // 🌱 Menanam pohon
-        if (playerInRange && plantedTree == null && Input.GetKeyDown(KeyCode.E))
-        {
-            plantingUI?.OpenPlantingMenu(this);
-        }
-
-        // 🌳 Menebang pohon mati
-        if (playerInRange && growTree != null && Input.GetKeyDown(KeyCode.E))
-        {
-            if (growTree.IsTreeDead())
-            {
-                ChopDownTree();
-                PromptUI.Instance.Show(plantPrompt, this);
-            }
-        }
     }
 
     public void SetHighlight(bool active)
@@ -70,6 +91,8 @@ public class PlantPlot : MonoBehaviour
     public void PlantTree()
     {
         SaveLoadSystem.Instance.SaveGame();
+
+        TutorialEvents.OnPlant?.Invoke();
 
         if (selectedTreeData == null) return;
         if (GameManager.Instance == null) return;
@@ -93,10 +116,12 @@ public class PlantPlot : MonoBehaviour
         growTree = plantedTree.GetComponent<GrowTree>();
 
         if (growTree == null)
-            Debug.LogError("❌ Prefab tree TIDAK memiliki GrowTree! Tambahkan ke prefab!");
+            Debug.LogError("Prefab tree TIDAK memiliki GrowTree! Tambahkan ke prefab!");
 
         // Kasih data tree
+        growTree.parentPlot = this;
         growTree.treeData = selectedTreeData;
+        growTree.currentHealth = selectedTreeData.startHealth;
 
         // Tampilkan health bar
         TreeHealthBar.Instance?.ShowTreeBar(growTree);
@@ -104,9 +129,12 @@ public class PlantPlot : MonoBehaviour
         // SFX
         if (audioSource != null && digSound != null)
             audioSource.PlayOneShot(digSound);
+
+        var player = FindFirstObjectByType<PlayerInteract>();
+        player?.ForceRefreshPlot(this);
     }
 
-    //  TEBA NGPOHON MATI
+    //  TEBANG POHON MATI
     private void ChopDownTree()
     {
         SaveLoadSystem.Instance.SaveGame();
@@ -121,12 +149,21 @@ public class PlantPlot : MonoBehaviour
             if (audioSource != null && digSound != null)
                 audioSource.PlayOneShot(digSound);
         }
+
+        var player = FindFirstObjectByType<PlayerInteract>();
+        player?.ForceRefreshPlot(this);
     }
 
     //  PLAYER TRIGGER
     private void OnTriggerEnter(Collider other)
     {
         if (!other.CompareTag("Player")) return;
+
+        if (!hasTriggeredReachPlot)
+        {
+            hasTriggeredReachPlot = true;
+            TutorialEvents.OnReachPlot?.Invoke();
+        }
 
         playerInRange = true;
         SetHighlight(true);
@@ -136,13 +173,6 @@ public class PlantPlot : MonoBehaviour
             TreeHealthBar.Instance?.ShowTreeBar(growTree);
             growTree.SetPlayerNearby(true);
         }
-
-        if (plantedTree == null)
-            PromptUI.Instance.Show(plantPrompt, this);
-        else if (growTree.IsTreeDead())
-            PromptUI.Instance.Show(chopPrompt, this);
-        else
-            PromptUI.Instance.Hide(this);
     }
 
     private void OnTriggerExit(Collider other)
@@ -157,7 +187,28 @@ public class PlantPlot : MonoBehaviour
             TreeHealthBar.Instance?.HideTreeBar(growTree);
             growTree.SetPlayerNearby(false);
         }
+    }
 
-        PromptUI.Instance?.Hide(this);
+    void OnEnable()
+    {
+        GrowTree.OnActionOwnerChanged += HandleActionChanged;
+    }
+
+    void OnDisable()
+    {
+        GrowTree.OnActionOwnerChanged -= HandleActionChanged;
+    }
+    
+    public void SetPlantedTree(GameObject tree)
+    {
+        plantedTree = tree;
+    }
+
+    void HandleActionChanged(GrowTree tree)
+    {
+        if (tree != growTree) return;
+        if (!playerInRange) return;
+
+        PromptManager.Instance.RefreshContext(this, PromptMessage);
     }
 }

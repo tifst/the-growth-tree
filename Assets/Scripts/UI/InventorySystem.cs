@@ -13,6 +13,7 @@ public class InventorySystem : MonoBehaviour
 
     [Header("Drop UI")]
     public TMP_Text selectedItemText;
+    public TMP_Text stockText;
     public Button dropOneButton;
     public Button dropAllButton;
 
@@ -41,7 +42,10 @@ public class InventorySystem : MonoBehaviour
     void Update()
     {
         if (Input.GetKeyDown(KeyCode.I))
+        {
+            if (PauseMenuManager.Instance.IsPaused) return;
             OpenInventory();
+        }
 
         if (isOpen && Input.GetKeyDown(KeyCode.Escape))
             CloseInventory();
@@ -52,12 +56,15 @@ public class InventorySystem : MonoBehaviour
     {
         if (isOpen) return;
         isOpen = true;
+        
+        TutorialEvents.OnOpenInventory?.Invoke();
 
         GlobalUIManager.Instance.OpenPanel(inventoryPanel);
         HUDCanvas.SetActive(false);
 
         UIManager.Instance.UpdateInventoryUI();
         UIManager.Instance.UpdateBagCapacity();
+        stockText.text = UIManager.Instance.BagCapacityString;
 
         DeselectItem();
     }
@@ -121,6 +128,7 @@ public class InventorySystem : MonoBehaviour
         HighlightSlot(slot);
 
         UIManager.Instance.UpdateBagCapacity();
+        stockText.text = UIManager.Instance.BagCapacityString;
     }
 
     //  DESELECT ITEM
@@ -128,6 +136,7 @@ public class InventorySystem : MonoBehaviour
     {
         selectedSlot = null;
         dropPanel.SetActive(false);
+        selectedItemText.text = "";
 
         // hilangkan semua highlight
         foreach (var slot in FindObjectsByType<ItemSlot>(FindObjectsSortMode.None))

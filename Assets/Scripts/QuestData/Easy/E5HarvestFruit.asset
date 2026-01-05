@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 11042682d2d5a2b469b041caca5db0eb, type: 3}
+  m_Name: E5HarvestFruit
+  m_EditorClassIdentifier: Assembly-CSharp::QuestData
+  questID: E5
+  questTitle: Harvest Any Fruit
+  shortDescription: Harvest 10 any fruits from the tree
+  description: "Student: I am hungry. Could you give me any fruits? I\u2019d love
+    to taste them and get it home."
+  questIcon: {fileID: 21300000, guid: 1e2512b24f1c8114ca8901978b7e496c, type: 3}
+  npcPrefab: {fileID: 4055082905570935619, guid: 7132a51dba3555b4590981aa05d0ed00, type: 3}
+  type: 0
+  difficulty: 0
+  goalType: 2
+  targetName: Any
+  requiredAmount: 10
+  forceNewNPC: 1
+  rewardXP: 20
+  rewardCoins: 40
+  hasTimer: 0
+  duration: 0
+  isRepeatable: 0

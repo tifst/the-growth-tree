@@ -1,17 +1,27 @@
 using UnityEngine;
 using System.Collections;
+using System;
+using System.Linq.Expressions;
+
+public enum TreeActionOwner
+{
+    None,
+    Plot,
+    Physic
+}
 
 public class GrowTree : MonoBehaviour
 {
+    public static event Action<GrowTree> OnTreeFullyGrown;
+    public static event Action<GrowTree> OnActionOwnerChanged;
+    TreeActionOwner lastOwner;
+    public PlantPlot parentPlot;
+
     [Header("Scriptable Data")]
     [SerializeField] public TreeData treeData;
 
     [Header("Effects")]
     [SerializeField] private ParticleSystem waterEffect;
-
-    [Header("Prompt")]
-    public string waterPrompt = "[Q] Water the Tree";
-    public float promptYOffset = 80f;
 
     // INTERNAL VISUAL
     private Renderer leafRenderer;
@@ -27,30 +37,45 @@ public class GrowTree : MonoBehaviour
     private bool recentlyWatered = false;
     private bool isDead = false;
     private bool isWithered = false;
-
-    private Vector3 minScale;
+    private bool isLoadedFromSave = false;
     private bool playerNearby = false;
+    private bool promptShown;
+    private Vector3 minScale;
 
     public bool IsFullyGrown => isFullyGrown;
     public float CurrentHealthPercent => Mathf.Clamp01(currentHealth / maxHealth);
-    public bool IsTreeDead() => currentHealth <= 0f;
+    public bool IsTreeDead() => isDead;
+
+    public TreeActionOwner GetActionOwner()
+    {
+        if (IsTreeDead())
+            return TreeActionOwner.Plot;
+
+        if (CanBeWatered())
+            return TreeActionOwner.Plot;
+
+        if (IsFullyGrown)
+            return TreeActionOwner.Physic;
+
+        return TreeActionOwner.None;
+    }
 
     void Start()
     {
         if (treeData == null)
         {
-            Debug.LogWarning($"⚠️ TreeData belum di-set pada {name}");
             enabled = false;
             return;
         }
 
-        // Ambil komponen efek dari anak prefab (jika ada)
         AutoFindEffects();
-
         minScale = treeData.maxScale * 0.1f;
-        transform.localScale = minScale;
 
-        currentHealth = treeData.startHealth;
+        if (!isLoadedFromSave)
+        {
+            transform.localScale = minScale;
+            currentHealth = treeData.startHealth;
+        }
 
         DetectLeafRenderer();
 
@@ -62,10 +87,16 @@ public class GrowTree : MonoBehaviour
     {
         if (treeData == null || isDead) return;
 
+        var owner = GetActionOwner();
+        if (owner != lastOwner)
+        {
+            lastOwner = owner;
+            OnActionOwnerChanged?.Invoke(this);
+        }
+
         HandleHealthDecay();
         UpdateVisualByHealth();
         HandleGrowth();
-        HandleWaterPrompt();
 
         if (recentlyWatered && waterEffect != null && !waterEffect.isPlaying)
             recentlyWatered = false;
@@ -82,31 +113,6 @@ public class GrowTree : MonoBehaviour
         playerNearby = b;
     }
 
-
-    // PROMPT AIR
-    private void HandleWaterPrompt()
-    {
-        if (PromptUI.Instance == null) return;
-
-        bool need = CurrentHealthPercent < treeData.waterNeedThreshold && !isDead;
-
-        if (playerNearby && need)
-        {
-            PromptUI.Instance.Show(waterPrompt, this);
-
-            if (PromptUI.Instance.promptRoot != null)
-            {
-                RectTransform r = PromptUI.Instance.promptRoot.GetComponent<RectTransform>();
-                r.anchoredPosition = new Vector2(0, promptYOffset);
-            }
-        }
-        else
-        {
-            PromptUI.Instance.Hide(this);
-        }
-    }
-
-
     // HEALTH LOGIC
     private void HandleHealthDecay()
     {
@@ -122,14 +128,19 @@ public class GrowTree : MonoBehaviour
             HandleTreeDeath();
     }
 
-
     // GROWTH
     private void HandleGrowth()
     {
-        if (isFullyGrown) return;
+        if (isFullyGrown)
+        {
+            if (!isLoadedFromSave)
+                transform.localScale = treeData.maxScale;
+            return;
+        }
 
-        growTimer += Time.deltaTime;
-        growTimer += Time.deltaTime * (CurrentHealthPercent >= 0.4f ? 1f : 0.5f);
+        float speedMultiplier = CurrentHealthPercent >= 0.4f ? 1f : 0.5f;
+
+        growTimer += Time.deltaTime * speedMultiplier;
 
         float progress = Mathf.Clamp01(growTimer / treeData.timeNeededToGrow);
         transform.localScale = Vector3.Lerp(minScale, treeData.maxScale, progress);
@@ -146,20 +157,18 @@ public class GrowTree : MonoBehaviour
     {
         SaveLoadSystem.Instance.SaveGame();
 
-        if (waterEffect != null)
-        {
-            var fx = Instantiate(waterEffect, transform.position + Vector3.up * 2f, Quaternion.identity);
-            fx.Play();
-            Destroy(fx.gameObject, 2f);
-        }
+        OnTreeFullyGrown?.Invoke(this);
+        TutorialEvents.OnTreeGrow?.Invoke();
+
+        PlayGrowEffect();
+        StartCoroutine(StopGrowEffectAfter(2f));
 
         GameManager.Instance?.AddXP(treeData.xpRewardPlant);
         GameManager.Instance?.ModifyPollution(-treeData.pollutionReduction);
         QuestManager.Instance?.AddProgress(treeData.treeName, QuestGoalType.PlantTree);
 
-        Debug.Log($"🌳 {treeData.treeName} fully grown!");
+        PromptManager.Instance.Notify($"{treeData.treeName} tree has fully grown!", 3f);
     }
-
 
     // MATERIAL DAUN
     private void DetectLeafRenderer()
@@ -193,7 +202,6 @@ public class GrowTree : MonoBehaviour
         }
     }
 
-
     private void UpdateVisualByHealth()
     {
         if (leafMatInstance == null) return;
@@ -205,13 +213,12 @@ public class GrowTree : MonoBehaviour
             isWithered = true;
             StartLeafTransition(treeData.healthyLeafMaterial, treeData.dryLeafMaterial, 2f);
         }
-        else if (isWithered && hp > 0.6f)
+        else if (isWithered && hp > 0.4f)
         {
             isWithered = false;
             StartLeafTransition(treeData.dryLeafMaterial, treeData.healthyLeafMaterial, 2f);
         }
     }
-
 
     private void StartLeafTransition(Material fromMat, Material toMat, float duration)
     {
@@ -235,7 +242,6 @@ public class GrowTree : MonoBehaviour
         colorTransitionRoutine = StartCoroutine(
             LeafColorTransitionRoutine(fromTop, toTop, fromGround, toGround, duration));
     }
-
 
     private IEnumerator LeafColorTransitionRoutine(
         Color fromTop, Color toTop,
@@ -262,23 +268,6 @@ public class GrowTree : MonoBehaviour
         }
     }
 
-
-    // WATERING
-    public void TriggerGrowth()
-    {
-        if (isDead || treeData == null) return;
-
-        if (currentHealth < maxHealth * treeData.waterNeedThreshold)
-        {
-            if (waterEffect != null && !waterEffect.isPlaying)
-                waterEffect.Play();
-
-            recentlyWatered = true;
-            currentHealth = Mathf.Clamp(currentHealth, 0f, maxHealth);
-        }
-    }
-
-
     // DEATH
     private void HandleTreeDeath()
     {
@@ -286,6 +275,10 @@ public class GrowTree : MonoBehaviour
 
         if (colorTransitionRoutine != null)
             StopCoroutine(colorTransitionRoutine);
+
+        TreePhysic tp = GetComponent<TreePhysic>();
+        if (tp != null)
+            tp.StopAllCoroutines();
 
         GetComponent<FruitSpawner>()?.StopAllCoroutines();
 
@@ -295,5 +288,130 @@ public class GrowTree : MonoBehaviour
 
         if (treeData.deadTrunkPrefab != null)
             Instantiate(treeData.deadTrunkPrefab, transform.position, transform.rotation, transform);
+        
+        GameManager.Instance?.ModifyPollution(Mathf.RoundToInt(0.2f * treeData.pollutionReduction));
+        OnActionOwnerChanged?.Invoke(this);
+    }
+
+    public bool CanBeWatered()
+    {
+        return !isDead && CurrentHealthPercent < treeData.waterNeedThreshold;
+    }
+
+    public float GetMissingHealth()
+    {
+        return maxHealth - currentHealth;
+    }
+
+    public void HealToFull()
+    {
+        if (isDead) return;
+
+        currentHealth = maxHealth;
+
+        // FORCE VISUAL BACK TO HEALTHY
+        if (isWithered)
+        {
+            isWithered = false;
+            StartLeafTransition(
+                treeData.dryLeafMaterial,
+                treeData.healthyLeafMaterial,
+                3f
+            );
+        }
+
+        recentlyWatered = true;
+    }
+
+    public void OnHealed()
+    {
+        recentlyWatered = true;
+    }
+
+    public TreeSaveInfo ExportState()
+    {
+        return new TreeSaveInfo
+        {
+            treeID = treeData.treeName,
+            plotID = parentPlot != null ? parentPlot.plotID : "",
+
+            posX = transform.position.x,
+            posY = transform.position.y,
+            posZ = transform.position.z,
+
+            scaleX = transform.localScale.x,
+            scaleY = transform.localScale.y,
+            scaleZ = transform.localScale.z,
+
+            health = currentHealth,
+            growTimer = growTimer,
+            isFullyGrown = isFullyGrown,
+            isDead = isDead,
+            isWithered = isWithered
+        };
+    }
+
+    public void ImportState(TreeSaveInfo info)
+    {
+        if (info == null) return;
+
+        isLoadedFromSave = true;
+
+        currentHealth = info.health;
+        growTimer = info.growTimer;
+        isFullyGrown = info.isFullyGrown;
+        wasFullyGrown = info.isFullyGrown;
+        isDead = info.isDead;
+        isWithered = info.isWithered;
+
+        transform.position = new Vector3(info.posX, info.posY, info.posZ);
+        transform.localScale = new Vector3(info.scaleX, info.scaleY, info.scaleZ);
+
+        UpdateVisualByHealth();
+        LateInitialize();
+
+        if (isDead)
+            HandleTreeDeath();
+    }
+
+    void LateInitialize()
+    {
+        // cari plot terdekat (karena tree adalah child plot)
+        parentPlot = GetComponentInParent<PlantPlot>();
+
+        if (parentPlot != null)
+        {
+            parentPlot.growTree = this;
+            parentPlot.SetPlantedTree(gameObject);
+        }
+    }
+
+    public void PlayWaterEffect()
+    {
+        if (waterEffect == null) return;
+
+        // arah ke bawah (default)
+        waterEffect.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+
+        if (!waterEffect.isPlaying)
+            waterEffect.Play();
+    }
+
+    void PlayGrowEffect()
+    {
+        if (waterEffect == null) return;
+
+        // 🔥 balik arah ke atas
+        waterEffect.transform.localRotation = Quaternion.Euler(-90f, 0f, 0f);
+        waterEffect.transform.localPosition = new Vector3(0, 0, 0);
+
+        waterEffect.Play();
+    }
+
+    public IEnumerator StopGrowEffectAfter(float sec)
+    {
+        yield return new WaitForSeconds(sec);
+        if (waterEffect != null)
+            waterEffect.Stop();
     }
 }

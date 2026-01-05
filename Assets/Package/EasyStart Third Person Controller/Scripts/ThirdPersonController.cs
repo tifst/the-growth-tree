@@ -39,10 +39,10 @@ public class ThirdPersonController : MonoBehaviour
     bool inputJump;
     bool inputCrouch;
     bool inputSprint;
+    bool hasMoved = false;
 
     Animator animator;
     CharacterController cc;
-
 
     void Start()
     {
@@ -54,11 +54,19 @@ public class ThirdPersonController : MonoBehaviour
             Debug.LogWarning("Hey buddy, you don't have the Animator component in your player. Without it, the animations won't work.");
     }
 
-
     // Update is only being used here to identify keys and trigger animations
     void Update()
     {
-
+        if (!hasMoved &&
+            (Input.GetKeyDown(KeyCode.W) ||
+            Input.GetKeyDown(KeyCode.A) ||
+            Input.GetKeyDown(KeyCode.S) ||
+            Input.GetKeyDown(KeyCode.D)))
+        {
+            hasMoved = true;
+            TutorialEvents.OnMove?.Invoke();
+        }
+        
         // Input checkers
         inputHorizontal = Input.GetAxis("Horizontal");
         inputVertical = Input.GetAxis("Vertical");
@@ -75,7 +83,6 @@ public class ThirdPersonController : MonoBehaviour
         // If dont have animator component, this block wont run
         if ( cc.isGrounded && animator != null )
         {
-
             // Crouch
             // Note: The crouch animation does not shrink the character's collider
             animator.SetBool("crouch", isCrouching);
@@ -87,7 +94,6 @@ public class ThirdPersonController : MonoBehaviour
             // Sprint
             isSprinting = cc.velocity.magnitude > minimumSpeed && inputSprint;
             animator.SetBool("sprint", isSprinting );
-
         }
 
         // Jump animation
@@ -101,16 +107,12 @@ public class ThirdPersonController : MonoBehaviour
             // Disable crounching when jumping
             //isCrouching = false; 
         }
-
         HeadHittingDetect();
-
     }
-
 
     // With the inputs and animations defined, FixedUpdate is responsible for applying movements and actions to the player
     private void FixedUpdate()
     {
-
         // Sprinting velocity boost or crounching desacelerate
         float velocityAdittion = 0;
         if ( isSprinting )
@@ -139,13 +141,10 @@ public class ThirdPersonController : MonoBehaviour
                 jumpElapsedTime = 0;
             }
         }
-
         // Add gravity to Y axis
         directionY = directionY - gravity * Time.deltaTime;
-
         
         // --- Character rotation --- 
-
         Vector3 forward = Camera.main.transform.forward;
         Vector3 right = Camera.main.transform.right;
 
@@ -165,18 +164,13 @@ public class ThirdPersonController : MonoBehaviour
             Quaternion rotation = Quaternion.Euler(0, angle, 0);
             transform.rotation = Quaternion.Slerp(transform.rotation, rotation, 0.15f);
         }
-
         // --- End rotation ---
-
-        
         Vector3 verticalDirection = Vector3.up * directionY;
         Vector3 horizontalDirection = forward + right;
 
         Vector3 moviment = verticalDirection + horizontalDirection;
         cc.Move( moviment );
-
     }
-
 
     //This function makes the character end his jump if he hits his head on something
     void HeadHittingDetect()
@@ -187,7 +181,6 @@ public class ThirdPersonController : MonoBehaviour
 
         // Uncomment this line to see the Ray drawed in your characters head
         // Debug.DrawRay(ccCenter, Vector3.up * headHeight, Color.red);
-
         if (Physics.Raycast(ccCenter, Vector3.up, hitCalc))
         {
             jumpElapsedTime = 0;

@@ -41,7 +41,15 @@ public class FruitSpawner : MonoBehaviour
         if (growTree.CurrentHealthPercent <= 0f) return;
         if (growTree.CurrentHealthPercent < growTree.treeData.waterNeedThreshold) return;
 
-        spawnTimer += Time.deltaTime;
+        float spawnSpeedMultiplier = 1f;
+
+        if (growTree.CurrentHealthPercent < growTree.treeData.waterNeedThreshold)
+        {
+            spawnSpeedMultiplier = 0.5f; // 2x lebih lama
+        }
+
+        spawnTimer += Time.deltaTime * spawnSpeedMultiplier;
+
         if (spawnTimer >= treeData.fruitSpawnInterval)
         {
             spawnTimer = 0f;
@@ -130,9 +138,7 @@ public class FruitSpawner : MonoBehaviour
         }
     }
 
-    // ====================================================
     //  REQUIRED BY TreePhysic → jangan hapus!
-    // ====================================================
     public List<GameObject> GetActiveFruits()
     {
         List<GameObject> list = new List<GameObject>();

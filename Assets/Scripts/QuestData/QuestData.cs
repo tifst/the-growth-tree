@@ -2,7 +2,7 @@ using UnityEngine;
 
 public enum QuestType { Main, Side, Random }
 public enum QuestDificulty { Easy, Medium, Hard }
-public enum QuestGoalType { PlantTree, HarvestFruit, SellFruit, DeliverItem, TalkToNPC }
+public enum QuestGoalType { BuySeed, PlantTree, HarvestFruit, SellFruit, DeliverItem}
 
 [CreateAssetMenu(fileName = "NewQuest", menuName = "Game/Quest Data")]
 public class QuestData : ScriptableObject
@@ -12,12 +12,14 @@ public class QuestData : ScriptableObject
     public string questTitle;
 
     [TextArea(1, 2)]
-    public string shortDescription; // 🔥 Deskripsi ringkas (untuk HUD / popup)
+    public string shortDescription;
 
     [TextArea(3, 5)]
-    public string description; // 🔥 Deskripsi lengkap
+    public string description;
+    public Sprite questIcon;
 
-    public Sprite questIcon; // 🔥 Ikon quest (untuk HUD, Notification, UI Panel)
+    [Header("NPC Quest")]
+    public GameObject npcPrefab;
 
     public QuestType type;
     public QuestDificulty difficulty;
@@ -26,11 +28,11 @@ public class QuestData : ScriptableObject
     [Header("Syarat Quest")]
     public string targetName;  
     public int requiredAmount = 1;
+    public bool forceNewNPC = false; 
 
     [Header("Reward")]
     public int rewardXP;
     public int rewardCoins;
-    public float rewardPollutionReduction;
 
     [Header("Optional Timer")]
     public bool hasTimer = false;

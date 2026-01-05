@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 11042682d2d5a2b469b041caca5db0eb, type: 3}
+  m_Name: H4SellOrange
+  m_EditorClassIdentifier: Assembly-CSharp::QuestData
+  questID: H4
+  questTitle: Sell Orange
+  shortDescription: Sell 10 oranges to the Shop
+  description: "Fruit Seller: Wow, you have orange tree now! If you sell oranges
+    at my shop, I\u2019ll buy them at a high price if you bring it fast."
+  questIcon: {fileID: 21300000, guid: 6fc31519aded24a839c1af9e163b6c01, type: 3}
+  npcPrefab: {fileID: 82153204871398064, guid: 80232f1d950cfae43b8112ef4a2fd160, type: 3}
+  type: 0
+  difficulty: 2
+  goalType: 3
+  targetName: Orange
+  requiredAmount: 10
+  forceNewNPC: 1
+  rewardXP: 25
+  rewardCoins: 50
+  hasTimer: 1
+  duration: 60
+  isRepeatable: 0

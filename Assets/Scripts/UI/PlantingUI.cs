@@ -55,7 +55,7 @@ public class PlantingUI : MonoBehaviour
             TMP_Text stockTxt = newBtnObj.transform.Find("StockText")?.GetComponent<TMP_Text>();
 
             if (nameTxt) nameTxt.text = tree.treeName;
-            if (iconImg) iconImg.sprite = tree.fruitIcon;
+            if (iconImg) iconImg.sprite = tree.seedIcon;
             if (stockTxt) stockTxt.text = $"Seeds: {GameManager.Instance.GetSeedStock(tree.treeName)}";
 
             btn.onClick.AddListener(() => OnClickPlant(tree));
@@ -91,7 +91,7 @@ public class PlantingUI : MonoBehaviour
         if (currentPlot == null || treeData == null) return;
         currentPlot.SelectTreeType(treeData);
         string plantedName = treeData.treeName;
-        StartCoroutine(ShowSeedPlanted(plantedName));
+        PromptManager.Instance.Notify($"{plantedName} Seed planted!");
         currentPlot.PlantTree();
         
         CloseMenu();
@@ -103,12 +103,5 @@ public class PlantingUI : MonoBehaviour
         GlobalUIManager.Instance.ClosePanel(PlantingPanel);
         
         currentPlot = null;
-    }
-
-    private IEnumerator ShowSeedPlanted(string seedName)
-    {
-        PromptUI.Instance.Show($"Benih {seedName} Ditanam!", this);
-        yield return new WaitForSeconds(2f);
-        PromptUI.Instance.Hide(this);
     }
 }

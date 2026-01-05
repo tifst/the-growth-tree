@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 11042682d2d5a2b469b041caca5db0eb, type: 3}
+  m_Name: M4SellLemon
+  m_EditorClassIdentifier: Assembly-CSharp::QuestData
+  questID: M4
+  questTitle: Sell Lemon
+  shortDescription: Sell 5 lemons to the Shop
+  description: "Fruit Seller: Wow, you have lemon trees now! If you sell lemons at
+    my shop, I\u2019ll buy them at a higher price if you bring it fast."
+  questIcon: {fileID: 21300000, guid: f6d5f58465fff456eb84bd071b3134b9, type: 3}
+  npcPrefab: {fileID: 82153204871398064, guid: 80232f1d950cfae43b8112ef4a2fd160, type: 3}
+  type: 0
+  difficulty: 1
+  goalType: 3
+  targetName: Lemon
+  requiredAmount: 10
+  forceNewNPC: 1
+  rewardXP: 20
+  rewardCoins: 40
+  hasTimer: 1
+  duration: 120
+  isRepeatable: 0

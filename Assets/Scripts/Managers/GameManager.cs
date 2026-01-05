@@ -1,23 +1,26 @@
 using UnityEngine;
+using System;
 using System.Collections.Generic;
+using System.Security.Cryptography.X509Certificates;
 
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance;
+    public static event Action<bool> OnGameOver;
 
     [Header("Player Data")]
     public int level = 1;
-    public int coins = 300;
+    public int coins = 200;
 
     [Header("XP Settings")]
-    public List<int> xpTable = new List<int>() {20, 50, 100, 200, 350, 600, 1000}; 
+    public List<int> xpTable = new List<int>() {30, 70, 120, 200, 300, 450, 600, 800, 1000}; 
     private int xpIndex = 0;
     public int xp = 0;
     public int prevXp = 0;
-    public int nextXp = 20;
+    public int nextXp = 30;
 
     [Header("Water Data")]
-    public float maxWater = 1000f;
+    public float maxWater = 5000f;
     public float currentWater = 500f;
 
     [Header("Tree & Inventory Data")]
@@ -26,12 +29,8 @@ public class GameManager : MonoBehaviour
     public Dictionary<string, int> seedStocks = new();
 
     [Header("City Data")]
-    public float pollution = 75.0f;
+    public float pollution = 70.0f;
     public float maxPollution = 100.0f;
-
-    [Header("Game Result UI")]
-    public GameObject winPanel;
-    public GameObject losePanel;
     private bool isGameEnded = false;
 
     [HideInInspector] public UIManager uiManager;
@@ -67,23 +66,14 @@ public class GameManager : MonoBehaviour
 
     void Start()
     {
-        SaveLoadSystem.Instance.LoadGame();
-        
-        if (uiManager == null)
-            uiManager = FindFirstObjectByType<UIManager>();
-
+        uiManager = FindFirstObjectByType<UIManager>();
         uiManager?.UpdateAllUI();
 
-        winPanel?.SetActive(false);
-        losePanel?.SetActive(false);
+        FogController.Instance?.SetPollution(pollution);
     }
 
     void Update()
     {
-        // Pollution fog update
-        if (FogController.Instance != null)
-            FogController.Instance.SetPollution(pollution);
-
         pollutionTimer += Time.deltaTime;
         if (pollutionTimer >= pollutionInterval)
         {
@@ -95,32 +85,19 @@ public class GameManager : MonoBehaviour
     // ================= GAME CONDITION =================
     public void CheckGameCondition()
     {
+        if (SaveLoadSystem.Instance != null && SaveLoadSystem.Instance.isLoading) return;
         if (isGameEnded) return;
 
-        if (pollution <= 20f)
+        if (pollution <= 0f)
             GameOver(true);
-        else if (pollution >= 90f)
+        else if (pollution >= 100f)
             GameOver(false);
     }
 
     private void GameOver(bool isWin)
     {
         isGameEnded = true;
-        Time.timeScale = 0f;
-
-        Cursor.visible = true;
-        Cursor.lockState = CursorLockMode.None;
-
-        if (isWin)
-        {
-            winPanel?.SetActive(true);
-            AudioManager.Instance?.PlayWinMusic();
-        }
-        else
-        {
-            losePanel?.SetActive(true);
-            AudioManager.Instance?.PlayLoseMusic();
-        }
+        OnGameOver?.Invoke(isWin);
     }
 
     // ================= POLLUTION =================
@@ -128,6 +105,10 @@ public class GameManager : MonoBehaviour
     {
         pollution = Mathf.Clamp(pollution + value, 0, maxPollution);
         uiManager?.UpdatePollution(pollution, maxPollution);
+
+        if (FogController.Instance != null)
+            FogController.Instance.SetPollution(pollution);
+
         CheckGameCondition();
     }
 
@@ -141,8 +122,6 @@ public class GameManager : MonoBehaviour
     // ================= XP =================
     public void AddXP(int amount)
     {
-        SaveLoadSystem.Instance.SaveGame();
-
         xp += amount;
 
         // selama xp cukup untuk naik level
@@ -156,8 +135,6 @@ public class GameManager : MonoBehaviour
 
     private void LevelUp()
     {
-        SaveLoadSystem.Instance.SaveGame();
-
         level++;
 
         prevXp = nextXp;
@@ -171,17 +148,16 @@ public class GameManager : MonoBehaviour
         else
         {
             // Di luar tabel → nextXp bertambah +1000 setiap level
-            nextXp += 500;
+            nextXp += 250;
         }
 
         uiManager?.UpdateLevel(level);
+        PromptManager.Instance.Notify($"LEVEL UP! You are now Level {level}!", 5f);
     }
 
     // ================= FRUIT STOCK =================
     public void ModifyFruitStock(string fruitName, int amount)
     {
-        SaveLoadSystem.Instance.SaveGame();
-
         if (!fruitStocks.ContainsKey(fruitName))
         {
             Debug.LogWarning($"❌ Fruit '{fruitName}' not registered!");
@@ -190,15 +166,13 @@ public class GameManager : MonoBehaviour
 
         fruitStocks[fruitName] = Mathf.Max(0, fruitStocks[fruitName] + amount);
 
-        uiManager?.UpdateFruits(GetTotalFruits());
         uiManager?.UpdateInventoryUI();
+        SaveLoadSystem.Instance.SaveGame();
     }
 
     // ================= SEED STOCK =================
     public void ModifySeedStock(string seedName, int amount)
     {
-        SaveLoadSystem.Instance.SaveGame();
-
         if (!seedStocks.ContainsKey(seedName))
         {
             Debug.LogWarning($"❌ Seed '{seedName}' not registered!");
@@ -207,8 +181,8 @@ public class GameManager : MonoBehaviour
 
         seedStocks[seedName] = Mathf.Max(0, seedStocks[seedName] + amount);
 
-        uiManager?.UpdateSeeds(GetTotalSeeds());
-        uiManager?.UpdateInventoryUI(); // penting!
+        uiManager?.UpdateInventoryUI();
+        SaveLoadSystem.Instance.SaveGame();
     }
 
     // ================= GETTERS =================
@@ -243,18 +217,46 @@ public class GameManager : MonoBehaviour
     }
 
     // ================= RESET =================
+    public void ResetAllGameState(bool saveAfter = false)
+    {
+        // 1️⃣ RESET GAME CORE
+        ResetGameData();
+
+        // 2️⃣ RESET QUEST
+        QuestManager.Instance?.ResetAll();
+
+        // 3️⃣ RESET WORLD (TREE)
+        foreach (var tree in FindObjectsByType<GrowTree>(FindObjectsSortMode.None))
+            Destroy(tree.gameObject);
+
+        // 4️⃣ RESET TUTORIAL
+        TutorialManager.Instance?.ResetAll();
+
+        // 5️⃣ RESET GUIDE / PROMPT
+        GuideManager.Instance?.ClearAllTargets();
+        PromptManager.Instance?.ClearAll();
+
+        // 6️⃣ SAVE JIKA DIMINTA
+        if (saveAfter)
+            SaveLoadSystem.Instance.SaveGame();
+    }
+
     public void ResetGameData()
     {
+        isGameEnded = false;
+
         level = 1;
-        coins = 300;
+        coins = 200;
+
         xp = 0;
         prevXp = 0;
-        nextXp = 20;
+        xpIndex = 0;
+        nextXp = xpTable.Count > 0 ? xpTable[0] : 30;
 
-        maxWater = 1000f;
         currentWater = 500f;
-
-        pollution = 75f;
+        pollution = 70f;
+        
+        FogController.Instance?.SetPollution(pollution);
 
         fruitStocks.Clear();
         seedStocks.Clear();
@@ -262,10 +264,65 @@ public class GameManager : MonoBehaviour
         foreach (var tree in allTrees)
         {
             if (tree == null) continue;
-            fruitStocks.TryAdd(tree.treeName, 0);
-            seedStocks.TryAdd(tree.treeName, 0);
+            fruitStocks[tree.treeName] = 0;
+            seedStocks[tree.treeName] = 0;
         }
 
-        uiManager?.UpdateAllUI();  // penting!
+        uiManager?.UpdateAllUI();
+    }
+
+    void SyncXPIndex()
+    {
+        xpIndex = 0;
+
+        for (int i = 0; i < xpTable.Count; i++)
+        {
+            if (xpTable[i] == nextXp)
+            {
+                xpIndex = i;
+                return;
+            }
+        }
+    }
+
+    public GameSaveData ExportState()
+    {
+        GameSaveData data = new GameSaveData
+        {
+            level = level,
+            coins = coins,
+            xp = xp,
+            prevXp = prevXp,
+            nextXp = nextXp,
+            currentWater = currentWater,
+            pollution = pollution
+        };
+
+        foreach (var kv in seedStocks)
+            data.seedStocks.Add(new StockEntry { name = kv.Key, amount = kv.Value });
+
+        foreach (var kv in fruitStocks)
+            data.fruitStocks.Add(new StockEntry { name = kv.Key, amount = kv.Value });
+
+        return data;
+    }
+    public void ImportState(GameSaveData data)
+    {
+        level = data.level;
+        coins = data.coins;
+        xp = data.xp;
+        prevXp = data.prevXp;
+        nextXp = data.nextXp;
+        currentWater = data.currentWater;
+        pollution = data.pollution;
+
+        seedStocks.Clear();
+        fruitStocks.Clear();
+
+        foreach (var e in data.seedStocks)
+            seedStocks[e.name] = e.amount;
+
+        foreach (var e in data.fruitStocks)
+            fruitStocks[e.name] = e.amount;
     }
 }

@@ -8,23 +8,19 @@ public class BuyShop : MonoBehaviour, IInteractable
     private bool isPlayerInside = false;
     private bool isOpen = false;
 
-    public string PromptMessage => "[E] Buy Seeds";
+    public string PromptMessage => isOpen ? "" : "[E] Buy Seeds";
     public InputType InputKey => InputType.E;
 
     void OnTriggerEnter(Collider other)
     {
         if (!other.CompareTag("Player")) return;
-
         isPlayerInside = true;
-        PromptUI.Instance.Show(PromptMessage, this);
     }
 
     void OnTriggerExit(Collider other)
     {
         if (!other.CompareTag("Player")) return;
-
         isPlayerInside = false;
-        PromptUI.Instance.Hide(this);
     }
 
     void Update()
@@ -38,27 +34,24 @@ public class BuyShop : MonoBehaviour, IInteractable
     public void Interact()
     {
         if (!isPlayerInside || isOpen) return;
+
         isOpen = true;
+        PromptManager.Instance.HideContext(this);
 
         // Tampilkan panel shop
         GlobalUIManager.Instance.HUDCanvas.SetActive(false);
-        PromptUI.Instance.Hide(this);
-
         GlobalUIManager.Instance.OpenPanel(BuyPanel);
     }
 
     public void CloseShop()
     {
-        SaveLoadSystem.Instance.SaveGame();
-
         if (!isOpen) return;
-        isOpen = false;
 
+        isOpen = false;
         GlobalUIManager.Instance.HUDCanvas.SetActive(true);
         GlobalUIManager.Instance.ClosePanel(BuyPanel);
 
-        // Kalau player masih di area, tampilkan prompt lagi
         if (isPlayerInside)
-            PromptUI.Instance.Show(PromptMessage, this);
+            PromptManager.Instance.RefreshContext(this, PromptMessage);
     }
 }

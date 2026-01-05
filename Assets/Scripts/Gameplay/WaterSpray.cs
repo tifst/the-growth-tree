@@ -3,136 +3,160 @@ using System.Collections;
 
 public class WaterSpray : MonoBehaviour
 {
-    [Header("Referensi")]
-    [SerializeField] private ParticleSystem ps;
+    [Header("Visual")]
+    [SerializeField] private ParticleSystem sprayFX;
     [SerializeField] private Transform sprayPoint;
     [SerializeField] private LayerMask treeMask;
     [SerializeField] private GameObject wateringCan;
 
-    [Header("Settings")]
+    [Header("Spray Settings")]
     [SerializeField] private float sprayRange = 3f;
-    public float refillRatePerSecond = 100f;
+    [SerializeField] private float waterWastePerSecond = 10f;
+    [SerializeField] private float waterCostPerHP = 1f;
 
-    [Header("Costs")]
-    public float waterCostPerHP = 1f;
-    public float waterWastePerSecond = 10f;
+    [Header("Refill Settings")]
+    public float refillRatePerSecond = 200f;
 
-    [Header("Audio Settings")]
+    [Header("Audio")]
     [SerializeField] private AudioSource audioSource;
     [SerializeField] private AudioClip spraySound;
     [SerializeField] private AudioClip refillSound;
 
-    private bool spraying = false;
-    private bool refilling = false;
-
+    private bool spraying;
+    private bool refilling;
+    public bool IsRefilling => refilling;
     private Coroutine refillCR;
+    private WaterSource currentSource;
 
-    private void Update()
+    void Update()
     {
         if (refilling) return;
 
-        if (Input.GetKeyDown(KeyCode.Q)) TryStartSpray();
-        else if (Input.GetKeyUp(KeyCode.Q)) StopSpray();
+        if (Input.GetKeyDown(KeyCode.Q))
+            StartSpray();
+
+        if (Input.GetKeyUp(KeyCode.Q))
+            StopSpray();
 
         if (spraying)
             SprayLogic();
     }
 
-    private void TryStartSpray()
+    // ================= SPRAY =================
+    void StartSpray()
     {
-        if (GameManager.Instance.currentWater <= 0)
+        if (GameManager.Instance.currentWater <= 0f)
         {
-            StartCoroutine(ShowEmptyWaterPrompt());
+            PromptManager.Instance.Notify("Out of water!");
             return;
         }
 
+        sprayFX?.Play();
         spraying = true;
         wateringCan?.SetActive(true);
-        ps?.Play();
 
-        if (audioSource != null && spraySound != null && !audioSource.isPlaying)
-        {
-            audioSource.clip = spraySound;
-            audioSource.loop = true;
-            audioSource.Play();
-        }
+        PlayLoop(spraySound);
     }
 
-    private IEnumerator ShowEmptyWaterPrompt()
-    {
-        PromptUI.Instance.Show("Air habis!", this);
-        yield return new WaitForSeconds(2f);
-        PromptUI.Instance.Hide(this);
-    }
-
-    private void StopSpray()
+    void StopSpray()
     {
         spraying = false;
         wateringCan?.SetActive(false);
-        ps?.Stop();
+        sprayFX?.Stop();
 
-        if (audioSource != null && audioSource.isPlaying && audioSource.clip == spraySound)
-        {
-            audioSource.Stop();
-            audioSource.loop = false;
-        }
+        StopAudio();
     }
 
-    private void SprayLogic()
+    void SprayLogic()
     {
+        if (GameManager.Instance.currentWater <= 0)
+        {
+            StopSpray();
+            PromptManager.Instance.Notify("Out of water!");
+            return;
+        }
+        
         if (!sprayPoint) sprayPoint = transform;
 
-        if (Physics.Raycast(sprayPoint.position, sprayPoint.forward, out RaycastHit hit, sprayRange, treeMask))
+        if (Physics.Raycast(
+            sprayPoint.position,
+            sprayPoint.forward,
+            out RaycastHit hit,
+            sprayRange,
+            treeMask))
         {
             GrowTree tree = hit.collider.GetComponentInParent<GrowTree>();
 
             if (tree != null)
             {
-                if (tree.CurrentHealthPercent >= 0.4f)
-                {
-                    GameManager.Instance.ModifyWater(waterWastePerSecond * Time.deltaTime);
-                    return;
-                }
-
                 HealTree(tree);
                 return;
             }
         }
 
         GameManager.Instance.ModifyWater(waterWastePerSecond * Time.deltaTime);
-
-        if (GameManager.Instance.currentWater <= 0)
-            StopSpray();
     }
 
-    private void HealTree(GrowTree tree)
+    void HealTree(GrowTree tree)
     {
-        float missingHP = tree.maxHealth - tree.currentHealth;
-        if (missingHP <= 0.01f) return;
-
-        float requiredWater = missingHP * waterCostPerHP;
-
-        if (GameManager.Instance.currentWater < requiredWater)
+        if (GameManager.Instance.currentWater <= 0f)
         {
-            float healAmount = Mathf.Min(GameManager.Instance.currentWater / waterCostPerHP, missingHP);
-            tree.currentHealth += healAmount;
-
-            GameManager.Instance.ModifyWater(GameManager.Instance.currentWater); 
             StopSpray();
             return;
         }
 
-        tree.currentHealth = tree.maxHealth;
-        GameManager.Instance.ModifyWater(requiredWater);
+        if (!tree.CanBeWatered())
+        {
+            // air tetap kebuang kalau nyiram pohon sehat
+            GameManager.Instance.ModifyWater(waterWastePerSecond * Time.deltaTime);
+            return;
+        }
+
+        float missingHP = tree.GetMissingHealth();
+        float availableWater = GameManager.Instance.currentWater;
+
+        TutorialEvents.OnWater?.Invoke();
+        
+        // maksimal heal dari air yang ada
+        float maxHealFromWater = availableWater / waterCostPerHP;
+
+        float healAmount = Mathf.Min(missingHP, maxHealFromWater);
+
+        if (healAmount <= 0f)
+        {
+            StopSpray();
+            return;
+        }
+
+        tree.currentHealth += healAmount;
+        tree.OnHealed(); // biar daun balik sehat
+        tree.PlayWaterEffect();
+        tree.StopGrowEffectAfter(2f);
+
+        float usedWater = healAmount * waterCostPerHP;
+        GameManager.Instance.ModifyWater(usedWater);
+
+        if (GameManager.Instance.currentWater <= 0f)
+            StopSpray();
     }
 
-    // =============== REFILL SYSTEM ===============
-
+    // ================= REFILL =================
     public void StartRefill()
     {
         if (refilling) return;
 
         refilling = true;
+        StopSpray();
+        wateringCan?.SetActive(true);
+
+        if (currentSource != null)
+        {
+            PromptManager.Instance.RefreshContext(
+                currentSource,
+                "Refilling..."
+            );
+        }
+
         refillCR = StartCoroutine(RefillRoutine());
     }
 
@@ -141,69 +165,75 @@ public class WaterSpray : MonoBehaviour
         if (!refilling) return;
 
         refilling = false;
+        wateringCan?.SetActive(false);
 
         if (refillCR != null)
             StopCoroutine(refillCR);
+    
+        PromptManager.Instance.Notify("Refill canceled", 3f);
 
-        PromptUI.Instance.Hide(this);
-        PromptUI.Instance.Show("Refill dibatalkan!", this);
-
-        if (audioSource != null) audioSource.Stop();
+        StopAudio();
+        refillCR = null;
     }
 
-    private IEnumerator RefillRoutine()
+    IEnumerator RefillRoutine()
     {
-        StopSpray();
+        PlayLoop(refillSound);
 
         float max = GameManager.Instance.maxWater;
-
-        if (GameManager.Instance.currentWater >= max - 0.01f)
-        {
-            PromptUI.Instance.Show("Water already full!", this);
-            yield return new WaitForSeconds(2f);
-            PromptUI.Instance.Hide(this);
-            refilling = false;
-            refillCR = null;
-            yield break;
-        }
-
-        PromptUI.Instance.Show("Refilling water...", this);
-
-        if (audioSource != null && refillSound != null)
-        {
-            audioSource.clip = refillSound;
-            audioSource.loop = true; // Loop karena ngisi butuh waktu
-            audioSource.Play();
-        }
 
         while (refilling && GameManager.Instance.currentWater < max)
         {
             float add = refillRatePerSecond * Time.deltaTime;
 
-            GameManager.Instance.currentWater = Mathf.Min(GameManager.Instance.currentWater + add, max);
+            GameManager.Instance.currentWater =
+                Mathf.Min(GameManager.Instance.currentWater + add, max);
 
-            if (GameManager.Instance.uiManager != null)
-                GameManager.Instance.uiManager.UpdateWater(GameManager.Instance.currentWater, max);
-
-            if (UIManager.Instance != null && UIManager.Instance.waterBar != null)
-                UIManager.Instance.waterBar.UpdateBar(GameManager.Instance.currentWater / max, Color.cyan);
+            GameManager.Instance.uiManager?.UpdateWater(
+                GameManager.Instance.currentWater, max);
 
             yield return null;
         }
 
-        if (audioSource != null) audioSource.Stop();
-
-        if (!refilling)
-        {
-            refillCR = null;
-            yield break;
-        }
-
-        PromptUI.Instance.Show("Water refilled!", this);
-        yield return new WaitForSeconds(2f);
-        PromptUI.Instance.Hide(this);
-
+        StopAudio();
         refilling = false;
         refillCR = null;
+        wateringCan?.SetActive(false);
+
+        if (currentSource != null)
+        {
+            PromptManager.Instance.RefreshContext(
+                currentSource,
+                "Water is full"
+            );
+        }
+    }
+
+    public void SetSource(WaterSource source)
+    {
+        currentSource = source;
+    }
+
+    public void ClearSource()
+    {
+        currentSource = null;
+    }
+
+    // ================= AUDIO =================
+    void PlayLoop(AudioClip clip)
+    {
+        if (audioSource == null || clip == null) return;
+
+        audioSource.clip = clip;
+        audioSource.loop = true;
+        audioSource.Play();
+    }
+
+    void StopAudio()
+    {
+        if (audioSource == null) return;
+
+        audioSource.Stop();
+        audioSource.loop = false;
     }
 }

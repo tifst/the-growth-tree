@@ -20,6 +20,11 @@ public class FogController : MonoBehaviour
 
     void Awake()
     {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
         Instance = this;
 
         RenderSettings.fog = true;

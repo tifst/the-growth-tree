@@ -9,7 +9,7 @@ public class PauseMenuManager : MonoBehaviour
     public GameObject pauseMenuPanel;
 
     [Header("Scene Settings")]
-    public string mainMenuSceneName = "MainMenu";
+    public string mainMenuScene = "MainMenu";
 
     [HideInInspector] 
     public bool uiIsBlockingPause = false;  // panel lain bisa blok ESC
@@ -91,6 +91,6 @@ public class PauseMenuManager : MonoBehaviour
         Time.timeScale = 1f;
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
-        SceneManager.LoadScene(mainMenuSceneName);
+        SceneLoader.Instance.LoadMainMenu(mainMenuScene);
     }
 }

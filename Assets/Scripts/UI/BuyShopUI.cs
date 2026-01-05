@@ -67,7 +67,7 @@ public class BuyShopUI : MonoBehaviour
             if (titleTxt) titleTxt.text = $"{tree.treeName} Seed";
             if (descTxt) descTxt.text = $"Grow your own {tree.treeName} tree!";
             if (costTxt) costTxt.text = $"Buy: {tree.seedBuyPrice} Coins";
-            if (iconImg) iconImg.sprite = tree.fruitIcon;
+            if (iconImg) iconImg.sprite = tree.seedIcon;
 
             buyBtn.onClick.RemoveAllListeners();
             buyBtn.onClick.AddListener(() => PurchaseSeed(tree));
@@ -75,36 +75,89 @@ public class BuyShopUI : MonoBehaviour
             bool enoughCoin = GameManager.Instance.coins >= tree.seedBuyPrice;
             bool enoughLevel = GameManager.Instance.level >= tree.requiredLevel;
 
-            buyBtn.interactable = enoughCoin && enoughLevel;
-
             if (!enoughLevel)
-                descTxt.text = $"Terbuka Pada Level {tree.requiredLevel}";
+            {
+                buyBtn.interactable = false;
+                descTxt.text = $"Unlocked at level {tree.requiredLevel}";
+                SetPanelLocked(panel, 0.8f);
+            }
+            else if (!enoughCoin)
+            {
+                buyBtn.interactable = false;
+                descTxt.text = $"Coin is not enough";
+                SetPanelLocked(panel, 0.8f);
+            }
+            else
+            {
+                buyBtn.interactable = true;
+                SetPanelLocked(panel, 1f);
+            }
         }
     }
 
     private void PurchaseSeed(TreeData tree)
     {
-        if (GameManager.Instance.coins < tree.seedBuyPrice) return;
-        if (GameManager.Instance.level < tree.requiredLevel) return;
+        TutorialEvents.OnBuySeed?.Invoke();
+
+        if (GameManager.Instance.level < tree.requiredLevel)
+        {
+            PromptManager.Instance.Notify(
+                $"Unlocked at level {tree.requiredLevel}"
+            );
+            return;
+        }
+
+        if (GameManager.Instance.coins < tree.seedBuyPrice)
+        {
+            PromptManager.Instance.Notify(
+                $"Coin is not enought! You need {tree.seedBuyPrice} Coins"
+            );
+            return;
+        }
 
         GameManager.Instance.AddCoins(-tree.seedBuyPrice);
         GameManager.Instance.ModifySeedStock(tree.treeName, 1);
 
         coinUI.text = $"Coins: {GameManager.Instance.coins}";
-        StartCoroutine(ShowBuyMessage($"1 Bibit {tree.treeName} dibeli!"));
+        PromptManager.Instance.Notify($"1 {tree.treeName} seed is purchased!");
 
-        UpdateShopPanels(); // update only
+        QuestManager.Instance.AddProgress(tree.treeName, QuestGoalType.BuySeed);
+
+        UpdateShopPanels();
+    }
+
+    void SetPanelLocked(GameObject panel, float alpha)
+    {
+        Image bg = panel.GetComponent<Image>();
+        if (bg != null)
+        {
+            Color c = bg.color;
+            c.a = alpha;
+            bg.color = c;
+        }
+
+        // semua text di dalam panel ikut redup
+        TMP_Text[] texts = panel.GetComponentsInChildren<TMP_Text>(true);
+        foreach (var t in texts)
+        {
+            Color tc = t.color;
+            tc.a = alpha;
+            t.color = tc;
+        }
+
+        // icon juga
+        Image[] images = panel.GetComponentsInChildren<Image>(true);
+        foreach (var img in images)
+        {
+            if (img == bg) continue;
+            Color ic = img.color;
+            ic.a = alpha;
+            img.color = ic;
+        }
     }
 
     public void OnCloseButtonPress()
     {
         buyShop?.CloseShop();
-    }
-    
-    private IEnumerator ShowBuyMessage(string msg, float duration = 1f)
-    {
-        PromptUI.Instance.Show(msg, this);
-        yield return new WaitForSeconds(duration);
-        PromptUI.Instance.Hide(this);
     }
 }

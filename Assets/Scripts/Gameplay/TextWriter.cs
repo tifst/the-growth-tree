@@ -12,7 +12,7 @@ public class TextWriter : MonoBehaviour
         textUI = GetComponent<TMP_Text>();
     }
 
-    public void Write(string message, float speed = 0.03f)
+    public void Write(string message, float speed = 0.1f)
     {
         if (typingCR != null)
             StopCoroutine(typingCR);
